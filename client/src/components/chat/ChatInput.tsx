@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useChatStore } from '../../store/chatStore';
 import { SlashCommandMenu } from './SlashCommandMenu';
-import { ModelSelector } from './ModelSelector';
-import { SlashCommand, SLASH_COMMANDS } from '../../types';
+import { SlashCommand, SLASH_COMMANDS, MODELS } from '../../types';
 import { Send, Square } from 'lucide-react';
 
 export function ChatInput() {
@@ -10,7 +9,7 @@ export function ChatInput() {
   const [showCommands, setShowCommands] = useState(false);
   const [commandText, setCommandText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { sendMessage, isStreaming, stopStreaming } = useChatStore();
+  const { sendMessage, isStreaming, stopStreaming, setSelectedModel } = useChatStore();
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -49,6 +48,17 @@ export function ChatInput() {
       content = trimmed.slice(cmd.command.length).trim();
     }
 
+    // auto-select model based on slash command
+    if (mode === '/ir' || mode === '/malware') {
+      setSelectedModel('llama-3.3-70b-versatile');
+    } else if (mode === '/explain' || mode === '/audit') {
+      setSelectedModel('deepseek-r1-distill-llama-70b');
+    } else if (mode === '/build') {
+      setSelectedModel('mixtral-8x7b-32768');
+    } else {
+      setSelectedModel(MODELS[0].id);
+    }
+
     sendMessage(content || trimmed, mode);
     setInput('');
   };
@@ -83,8 +93,6 @@ export function ChatInput() {
               disabled={isStreaming}
             />
           </div>
-
-          <ModelSelector />
 
           {isStreaming ? (
             <button

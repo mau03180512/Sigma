@@ -83,9 +83,9 @@ export function ChatInput() {
     if (hasImages) {
       setSelectedModel('llama-3.2-90b-vision-preview');
     } else if (mode === '/explain' || mode === '/audit') {
-      setSelectedModel('mixtral-8x7b-32768');
+      setSelectedModel('llama-3.3-70b-versatile');
     } else if (mode === '/build') {
-      setSelectedModel('mixtral-8x7b-32768');
+      setSelectedModel('llama-3.3-70b-versatile');
     } else {
       // Don't change if already selected
     }

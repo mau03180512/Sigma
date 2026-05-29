@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useChatStore } from '../../store/chatStore';
 import { MessageBubble, TypingIndicator } from './MessageBubble';
 import { ChatInput } from './ChatInput';
@@ -6,17 +6,38 @@ import { Shield, Sparkles, Zap, Code, Search } from 'lucide-react';
 
 export function ChatView() {
   const { messages, isStreaming, streamedContent, error, clearError } = useChatStore();
+  const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const userScrolledUp = useRef(false);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const threshold = 100;
+    userScrolledUp.current = el.scrollHeight - el.scrollTop - el.clientHeight > threshold;
+  }, []);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (!userScrolledUp.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages, streamedContent]);
+
+  const scrollToBottom = () => {
+    userScrolledUp.current = false;
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   const hasMessages = messages.length > 0;
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-sigma-bg-primary relative">
-      <div className="flex-1 overflow-y-auto px-4 py-8 custom-scrollbar">
+      <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 py-8 custom-scrollbar">
+        {userScrolledUp.current && (
+          <button onClick={scrollToBottom} className="sticky bottom-0 left-1/2 -translate-x-1/2 z-10 mb-2 glass rounded-full px-4 py-2 text-xs text-sigma-accent hover:bg-sigma-accent/10 transition-all shadow-lg animate-fade-in">
+            ↓ New messages
+          </button>
+        )}
         <div className="max-w-4xl mx-auto space-y-8">
           {!hasMessages && !isStreaming ? (
             <div className="flex flex-col items-center justify-center min-h-[70vh] text-center animate-fade-in">
@@ -72,9 +93,26 @@ export function ChatView() {
             </div>
           ) : (
             <div className="space-y-8 pb-4">
-              {messages.map((msg) => (
-                <MessageBubble key={msg.id} message={msg} />
-              ))}
+              {messages.map((msg, idx) => {
+                const prevMsg = idx > 0 ? messages[idx - 1] : null;
+                const msgDate = new Date(msg.created_at).toDateString();
+                const prevDate = prevMsg ? new Date(prevMsg.created_at).toDateString() : null;
+                const showDateSep = msgDate !== prevDate;
+                return (
+                  <div key={msg.id}>
+                    {showDateSep && (
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="flex-1 h-px bg-sigma-glass-border" />
+                        <span className="text-[10px] font-medium text-sigma-text-secondary uppercase tracking-widest shrink-0">
+                          {new Date(msg.created_at).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                        </span>
+                        <div className="flex-1 h-px bg-sigma-glass-border" />
+                      </div>
+                    )}
+                    <MessageBubble message={msg} />
+                  </div>
+                );
+              })}
 
               {streamedContent && (
                 <MessageBubble

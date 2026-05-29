@@ -37,12 +37,14 @@ router.post('/', authenticate, chatRateLimit, async (req: AuthRequest, res: Resp
 
     let convId = conversationId;
     if (!convId) {
+      const title = extractText(messages[messages.length - 1]?.content).slice(0, 60) || 'New Chat';
       const conv = await createConversation({
         user_id: userId,
         model: validatedModel,
+        title,
       });
       convId = conv.id;
-      console.log(`[Chat] Created conversation: ${convId}`);
+      console.log(`[Chat] Created conversation: ${convId} title="${title}"`);
     }
 
     const systemMessage = { role: 'system', content: SIGMA_SYSTEM_PROMPT };

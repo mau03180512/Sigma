@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useChatStore } from '../../store/chatStore';
 import { useAuthStore } from '../../store/authStore';
 import { Plus, Trash2, LogOut, MessageSquare, Shield, Settings, Search } from 'lucide-react';
@@ -10,10 +10,15 @@ interface SidebarProps {
 export function Sidebar({ onClose }: SidebarProps) {
   const { conversations, activeConversationId, loadConversations, createNewConversation, deleteConversation, setActiveConversation } = useChatStore();
   const { user, signOut } = useAuthStore();
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadConversations();
   }, [loadConversations]);
+
+  const filteredConversations = conversations.filter((c) =>
+    c.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const handleNewChat = () => {
     createNewConversation();
@@ -60,6 +65,8 @@ export function Sidebar({ onClose }: SidebarProps) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-sigma-text-secondary group-focus-within:text-sigma-accent transition-colors" />
           <input
             type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search chats..."
             className="w-full bg-sigma-bg-primary/50 border border-sigma-glass-border rounded-lg py-2 pl-9 pr-3 text-xs text-sigma-text-primary placeholder:text-sigma-text-secondary focus:outline-none focus:border-sigma-accent/50 transition-all"
           />
@@ -71,15 +78,17 @@ export function Sidebar({ onClose }: SidebarProps) {
           <span className="text-[10px] font-semibold text-sigma-text-secondary uppercase tracking-widest">Recent Chats</span>
         </div>
         
-        {conversations.length === 0 ? (
+        {filteredConversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
             <div className="w-12 h-12 rounded-full bg-sigma-glass-border flex items-center justify-center mb-3">
               <MessageSquare className="w-5 h-5 text-sigma-text-secondary opacity-20" />
             </div>
-            <p className="text-sigma-text-secondary text-xs">No history yet.<br/>Start a new mission.</p>
+            <p className="text-sigma-text-secondary text-xs">
+              {searchQuery ? 'No matching chats found.' : 'No history yet.<br/>Start a new mission.'}
+            </p>
           </div>
         ) : (
-          conversations.map((conv) => (
+          filteredConversations.map((conv) => (
             <button
               key={conv.id}
               onClick={() => handleSelect(conv.id)}

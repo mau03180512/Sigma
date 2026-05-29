@@ -1,18 +1,11 @@
 const ALLOWED_MODELS = [
-  'deepseek/deepseek-v4-flash:free',
-  'deepseek/deepseek-v4-flash',
-  'deepseek/deepseek-r1:free',
-  'deepseek/deepseek-chat-v4-pro',
-  'qwen/qwen3.5-122b-a10b:free',
-  'mistralai/mistral-small-4-119b-2603:free',
-  'google/gemma-4-31b-it:free',
-  'openai/gpt-4o',
-  'anthropic/claude-sonnet-4',
+  'deepseek-chat',
+  'deepseek-reasoner',
 ];
 
-const DEFAULT_MODEL = 'deepseek/deepseek-v4-flash:free';
+const DEFAULT_MODEL = 'deepseek-chat';
 
-const API_BASE = 'https://openrouter.ai/api/v1';
+const API_BASE = 'https://api.deepseek.com/v1';
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -34,25 +27,23 @@ export function validateModel(model: string): string {
 
 export async function* streamChat(options: NIMOptions): AsyncGenerator<string> {
   const model = validateModel(options.model || DEFAULT_MODEL);
-  const apiKey = process.env.OPENROUTER_API_KEY;
+  const apiKey = process.env.DEEPSEEK_API_KEY;
 
   if (!apiKey) {
-    throw new Error('OPENROUTER_API_KEY not configured');
+    throw new Error('DEEPSEEK_API_KEY not configured');
   }
 
   const messageCount = options.messages.length;
   const totalChars = options.messages.reduce((sum, m) => sum + m.content.length, 0);
   const apiKeyPreview = apiKey.slice(0, 12) + '...';
 
-  console.log(`[NIM] Request: model=${model}, messages=${messageCount}, chars=${totalChars}, key=${apiKeyPreview}`);
+  console.log(`[API] Request: model=${model}, messages=${messageCount}, chars=${totalChars}, key=${apiKeyPreview}`);
 
   const response = await fetch(`${API_BASE}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
-      'HTTP-Referer': process.env.APP_URL || 'https://sigma-ai.co',
-      'X-Title': 'Sigma',
     },
     body: JSON.stringify({
       model,

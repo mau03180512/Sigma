@@ -1,9 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_ANON_KEY || '';
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+if (!supabaseUrl) {
+  console.error('SUPABASE_URL is missing or empty');
+  console.error('Available env vars:', Object.keys(process.env).join(', '));
+}
+
+if (!supabaseKey) {
+  console.error('SUPABASE_ANON_KEY is missing or empty');
+}
+
+export const supabase = createClient(supabaseUrl || '', supabaseKey || '');
 
 export interface Conversation {
   id: string;

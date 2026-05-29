@@ -60,7 +60,7 @@ export async function createConversation(conversation: Partial<Conversation>): P
     .insert({
       user_id: conversation.user_id,
       title: conversation.title || 'New Chat',
-      model: conversation.model || 'deepseek-ai/deepseek-v4-flash',
+      model: conversation.model || 'llama-3.3-70b-versatile',
     })
     .select()
     .single();

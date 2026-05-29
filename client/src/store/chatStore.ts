@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Message, Conversation, Attachment } from '../types';
-import { streamChat, getConversations as fetchConversations, deleteConversation as apiDeleteConversation } from '../lib/api';
+import { streamChat, getConversations as fetchConversations, getConversation as fetchConversation, deleteConversation as apiDeleteConversation } from '../lib/api';
 
 interface ChatState {
   conversations: Conversation[];
@@ -60,10 +60,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   loadConversation: async (id: string) => {
     try {
-      const conv = await fetchConversations();
-      const fullConv = conv.find((c: any) => c.id === id);
-      if (fullConv?.messages) {
-        set({ messages: fullConv.messages, activeConversationId: id });
+      const conv = await fetchConversation(id);
+      if (conv?.messages) {
+        set({ messages: conv.messages, activeConversationId: id });
       }
     } catch {
       set({ error: 'Failed to load conversation' });

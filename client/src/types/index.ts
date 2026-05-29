@@ -38,12 +38,9 @@ export const SLASH_COMMANDS: { command: SlashCommand; label: string; description
 ];
 
 export const MODELS = [
-  { id: 'deepseek-ai/deepseek-v4-flash', label: 'DeepSeek V4 Flash', tag: 'Fast coding', bestFor: 'Best for coding & agents' },
-  { id: 'deepseek-ai/deepseek-v4-pro', label: 'DeepSeek V4 Pro', tag: 'Max power', bestFor: 'Best for complex tasks' },
-  { id: 'deepseek-ai/deepseek-r1', label: 'DeepSeek R1', tag: 'Deep reasoning', bestFor: 'Best for complex reasoning' },
-  { id: 'qwen/qwen3.5-122b-a10b', label: 'Qwen 3.5', tag: 'General + coding', bestFor: 'Best for general + coding' },
-  { id: 'mistralai/mistral-small-4-119b-2603', label: 'Mistral Small 4', tag: 'Complex tasks', bestFor: 'Best for complex tasks' },
-  { id: 'minimaxai/minimax-m2.7', label: 'MiniMax M2.7', tag: 'Balanced', bestFor: 'Best for balanced chat' },
-  { id: 'nvidia/llama-3.3-nemotron-super-49b-v1', label: 'Nemotron Super 49B', tag: 'Speed', bestFor: 'Best for speed & accuracy' },
-  { id: 'google/gemma-4-31b-it', label: 'Gemma 4 31B', tag: 'Reasoning', bestFor: 'Best for reasoning & coding' },
+  { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B', tag: 'Versatile', bestFor: 'Best for general tasks' },
+  { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B', tag: 'Fast', bestFor: 'Best for speed' },
+  { id: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B', tag: 'MoE', bestFor: 'Best for complex reasoning' },
+  { id: 'gemma2-9b-it', label: 'Gemma 2 9B', tag: 'Lightweight', bestFor: 'Best for balanced chat' },
+  { id: 'deepseek-r1-distill-llama-70b', label: 'DeepSeek R1', tag: 'Reasoning', bestFor: 'Best for deep reasoning' },
 ];

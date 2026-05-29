@@ -6,7 +6,7 @@ import chatRoutes from './routes/chat.js';
 import conversationRoutes from './routes/conversations.js';
 
 const requiredEnvVars = [
-  'DEEPSEEK_API_KEY',
+  'GROQ_API_KEY',
   'FIREBASE_PROJECT_ID',
   'FIREBASE_CLIENT_EMAIL',
   'FIREBASE_PRIVATE_KEY',

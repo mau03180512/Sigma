@@ -1,11 +1,14 @@
 const ALLOWED_MODELS = [
-  'deepseek-chat',
-  'deepseek-reasoner',
+  'llama-3.3-70b-versatile',
+  'llama-3.1-8b-instant',
+  'mixtral-8x7b-32768',
+  'gemma2-9b-it',
+  'deepseek-r1-distill-llama-70b',
 ];
 
-const DEFAULT_MODEL = 'deepseek-chat';
+const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
 
-const API_BASE = 'https://api.deepseek.com/v1';
+const API_BASE = 'https://api.groq.com/openai/v1';
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -27,10 +30,10 @@ export function validateModel(model: string): string {
 
 export async function* streamChat(options: NIMOptions): AsyncGenerator<string> {
   const model = validateModel(options.model || DEFAULT_MODEL);
-  const apiKey = process.env.DEEPSEEK_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
 
   if (!apiKey) {
-    throw new Error('DEEPSEEK_API_KEY not configured');
+    throw new Error('GROQ_API_KEY not configured');
   }
 
   const messageCount = options.messages.length;

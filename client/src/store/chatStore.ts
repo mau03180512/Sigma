@@ -29,7 +29,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   activeConversationId: null,
   messages: [],
   isStreaming: false,
-  selectedModel: localStorage.getItem('sigma-selected-model') || 'deepseek-chat',
+  selectedModel: localStorage.getItem('sigma-selected-model') || 'llama-3.3-70b-versatile',
   streamedContent: '',
   error: null,
 

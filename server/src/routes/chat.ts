@@ -22,7 +22,7 @@ router.post('/', authenticate, chatRateLimit, async (req: AuthRequest, res: Resp
     }
 
     const userId = req.userId!;
-    const validatedModel = validateModel(model || 'deepseek-chat');
+    const validatedModel = validateModel(model || 'llama-3.3-70b-versatile');
 
     console.log(`[Chat] userId=${userId?.slice(0, 8)}... model=${validatedModel} convId=${conversationId || 'new'} mode=${mode || 'none'} messages=${messages.length}`);
 

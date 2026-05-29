@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { Shield } from 'lucide-react';
@@ -6,11 +6,21 @@ import { Shield } from 'lucide-react';
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuthStore();
   const [showSplash, setShowSplash] = useState(true);
+  const minTimePassed = useRef(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setShowSplash(false), 2000);
+    const timer = setTimeout(() => {
+      minTimePassed.current = true;
+      setShowSplash(false);
+    }, 1000);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (!isLoading && minTimePassed.current) {
+      setShowSplash(false);
+    }
+  }, [isLoading]);
 
   if (isLoading || showSplash) {
     return (

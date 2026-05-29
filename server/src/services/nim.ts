@@ -1,17 +1,18 @@
 const ALLOWED_MODELS = [
-  'deepseek-ai/deepseek-v4-flash',
-  'deepseek-ai/deepseek-v4-pro',
-  'deepseek-ai/deepseek-r1',
-  'qwen/qwen3.5-122b-a10b',
-  'mistralai/mistral-small-4-119b-2603',
-  'minimaxai/minimax-m2.7',
-  'nvidia/llama-3.3-nemotron-super-49b-v1',
-  'google/gemma-4-31b-it',
+  'deepseek/deepseek-v4-flash:free',
+  'deepseek/deepseek-v4-flash',
+  'deepseek/deepseek-r1:free',
+  'deepseek/deepseek-chat-v4-pro',
+  'qwen/qwen3.5-122b-a10b:free',
+  'mistralai/mistral-small-4-119b-2603:free',
+  'google/gemma-4-31b-it:free',
+  'openai/gpt-4o',
+  'anthropic/claude-sonnet-4',
 ];
 
-const DEFAULT_MODEL = 'deepseek-ai/deepseek-v4-flash';
+const DEFAULT_MODEL = 'deepseek/deepseek-v4-flash:free';
 
-const NIM_API_BASE = 'https://integrate.api.nvidia.com/v1';
+const API_BASE = 'https://openrouter.ai/api/v1';
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -33,17 +34,25 @@ export function validateModel(model: string): string {
 
 export async function* streamChat(options: NIMOptions): AsyncGenerator<string> {
   const model = validateModel(options.model || DEFAULT_MODEL);
-  const apiKey = process.env.NVIDIA_NIM_API_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY;
 
   if (!apiKey) {
-    throw new Error('NVIDIA_NIM_API_KEY not configured');
+    throw new Error('OPENROUTER_API_KEY not configured');
   }
 
-  const response = await fetch(`${NIM_API_BASE}/chat/completions`, {
+  const messageCount = options.messages.length;
+  const totalChars = options.messages.reduce((sum, m) => sum + m.content.length, 0);
+  const apiKeyPreview = apiKey.slice(0, 12) + '...';
+
+  console.log(`[NIM] Request: model=${model}, messages=${messageCount}, chars=${totalChars}, key=${apiKeyPreview}`);
+
+  const response = await fetch(`${API_BASE}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
+      'HTTP-Referer': process.env.APP_URL || 'https://sigma-ai.co',
+      'X-Title': 'Sigma',
     },
     body: JSON.stringify({
       model,
@@ -56,15 +65,28 @@ export async function* streamChat(options: NIMOptions): AsyncGenerator<string> {
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`NIM API error ${response.status}: ${errorText}`);
+    let errorText = 'unknown error';
+    try {
+      errorText = await response.text();
+    } catch {
+      try {
+        errorText = JSON.stringify(await response.json());
+      } catch {
+        errorText = `HTTP ${response.status} ${response.statusText}`;
+      }
+    }
+    console.error(`[API] Error: status=${response.status}, body=${errorText}, model=${model}, messages=${messageCount}, chars=${totalChars}`);
+    throw new Error(`API error ${response.status}: ${errorText}`);
   }
+
+  console.log(`[API] Stream started: model=${model}, status=${response.status}`);
 
   const reader = response.body?.getReader();
   if (!reader) throw new Error('No response body');
 
   const decoder = new TextDecoder();
   let buffer = '';
+  let streamedChars = 0;
 
   try {
     while (true) {
@@ -84,12 +106,16 @@ export async function* streamChat(options: NIMOptions): AsyncGenerator<string> {
         try {
           const parsed = JSON.parse(data);
           const content = parsed.choices?.[0]?.delta?.content;
-          if (content) yield content;
+          if (content) {
+            streamedChars += content.length;
+            yield content;
+          }
         } catch {
           // skip malformed chunks
         }
       }
     }
+    console.log(`[API] Stream completed: model=${model}, chars=${streamedChars}`);
   } finally {
     reader.releaseLock();
   }

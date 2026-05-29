@@ -22,7 +22,9 @@ router.post('/', authenticate, chatRateLimit, async (req: AuthRequest, res: Resp
     }
 
     const userId = req.userId!;
-    const validatedModel = validateModel(model || 'deepseek-ai/deepseek-v4-flash');
+    const validatedModel = validateModel(model || 'deepseek/deepseek-v4-flash:free');
+
+    console.log(`[Chat] userId=${userId?.slice(0, 8)}... model=${validatedModel} convId=${conversationId || 'new'} mode=${mode || 'none'} messages=${messages.length}`);
 
     let convId = conversationId;
     if (!convId) {
@@ -31,6 +33,7 @@ router.post('/', authenticate, chatRateLimit, async (req: AuthRequest, res: Resp
         model: validatedModel,
       });
       convId = conv.id;
+      console.log(`[Chat] Created conversation: ${convId}`);
     }
 
     const systemMessage = { role: 'system', content: SIGMA_SYSTEM_PROMPT };
@@ -66,6 +69,7 @@ router.post('/', authenticate, chatRateLimit, async (req: AuthRequest, res: Resp
         res.write(`data: ${JSON.stringify({ content: chunk, conversationId: convId })}\n\n`);
       }
     } catch (streamError: any) {
+      console.error(`[Chat] Stream error for conv=${convId}:`, streamError.message);
       res.write(`data: ${JSON.stringify({ error: streamError.message })}\n\n`);
       res.end();
       return;
@@ -78,10 +82,11 @@ router.post('/', authenticate, chatRateLimit, async (req: AuthRequest, res: Resp
       model: validatedModel,
     });
 
+    console.log(`[Chat] Completed conv=${convId} chars=${fullResponse.length}`);
     res.write(`data: ${JSON.stringify({ done: true, conversationId: convId })}\n\n`);
     res.end();
   } catch (error: any) {
-    console.error('Chat error:', error);
+    console.error(`[Chat] Fatal error:`, error);
     if (!res.headersSent) {
       res.status(500).json({ error: 'Internal server error' });
     }

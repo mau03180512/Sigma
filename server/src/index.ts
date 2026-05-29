@@ -6,12 +6,12 @@ import chatRoutes from './routes/chat.js';
 import conversationRoutes from './routes/conversations.js';
 
 const requiredEnvVars = [
-  'NVIDIA_NIM_API_KEY',
+  'OPENROUTER_API_KEY',
   'FIREBASE_PROJECT_ID',
   'FIREBASE_CLIENT_EMAIL',
   'FIREBASE_PRIVATE_KEY',
   'SUPABASE_URL',
-  'SUPABASE_ANON_KEY',
+  'SUPABASE_SERVICE_KEY',
 ];
 
 for (const envVar of requiredEnvVars) {
@@ -39,6 +39,15 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  if (err instanceof SyntaxError && 'body' in err) {
+    console.error('[Express] Malformed JSON in request body');
+    res.status(400).json({ error: 'Invalid JSON in request body' });
+    return;
+  }
+  _next(err);
+});
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

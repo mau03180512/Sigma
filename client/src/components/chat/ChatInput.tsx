@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useChatStore } from '../../store/chatStore';
 import { SlashCommandMenu } from './SlashCommandMenu';
 import { SlashCommand, SLASH_COMMANDS, MODELS, Attachment } from '../../types';
-import { Send, Square, Paperclip, X, File, Image as ImageIcon } from 'lucide-react';
+import { Send, Square, Paperclip, X, File, Image as ImageIcon, Cpu } from 'lucide-react';
 
 export function ChatInput() {
   const [input, setInput] = useState('');
@@ -11,7 +11,9 @@ export function ChatInput() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { sendMessage, isStreaming, stopStreaming, setSelectedModel } = useChatStore();
+  const { sendMessage, isStreaming, stopStreaming, setSelectedModel, selectedModel } = useChatStore();
+
+  const currentModel = MODELS.find(m => m.id === selectedModel) || MODELS[0];
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -85,7 +87,7 @@ export function ChatInput() {
     } else if (mode === '/build') {
       setSelectedModel('mixtral-8x7b-32768');
     } else {
-      setSelectedModel(MODELS[0].id);
+      // Don't change if already selected
     }
 
     sendMessage(content || trimmed, mode, attachments.length ? attachments : undefined);
@@ -101,36 +103,38 @@ export function ChatInput() {
   };
 
   return (
-    <div className="border-t border-sigma-glass-border bg-sigma-bg-primary/50 backdrop-blur-sm">
-      <div className="max-w-4xl mx-auto p-4">
+    <div className="bg-sigma-bg-primary/80 backdrop-blur-xl border-t border-sigma-glass-border pb-safe">
+      <div className="max-w-4xl mx-auto p-4 md:p-6">
         {attachments.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-3">
+          <div className="flex flex-wrap gap-3 mb-4 animate-slide-up">
             {attachments.map((att) => (
-              <div key={att.id} className="flex items-center gap-2 glass rounded-lg px-3 py-2 text-sm max-w-[200px]">
+              <div key={att.id} className="flex items-center gap-3 glass bg-sigma-bg-secondary/50 rounded-xl p-2 pr-3 text-sm border-sigma-accent/20">
                 {att.type.startsWith('image/') ? (
-                  <div className="relative w-8 h-8 rounded overflow-hidden shrink-0">
+                  <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-sigma-glass-border">
                     <img src={att.dataUrl} alt={att.name} className="w-full h-full object-cover" />
                   </div>
                 ) : (
-                  <File className="w-4 h-4 text-sigma-accent shrink-0" />
+                  <div className="w-10 h-10 rounded-lg bg-sigma-accent/10 flex items-center justify-center shrink-0">
+                    <File className="w-5 h-5 text-sigma-accent" />
+                  </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs text-sigma-text-primary truncate">{att.name}</p>
-                  <p className="text-[10px] text-sigma-text-secondary">{formatSize(att.size)}</p>
+                  <p className="text-xs font-bold text-sigma-text-primary truncate">{att.name}</p>
+                  <p className="text-[10px] text-sigma-text-secondary font-medium uppercase">{formatSize(att.size)}</p>
                 </div>
-                <button onClick={() => removeAttachment(att.id)} className="shrink-0 p-0.5 rounded hover:bg-sigma-glass-border transition-colors">
-                  <X className="w-3 h-3 text-sigma-text-secondary" />
+                <button 
+                  onClick={() => removeAttachment(att.id)} 
+                  className="shrink-0 p-1.5 rounded-lg hover:bg-sigma-danger/20 text-sigma-text-secondary hover:text-sigma-danger transition-all"
+                >
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             ))}
-            {attachments.length >= 20 && (
-              <span className="text-[10px] text-sigma-text-secondary self-center">Max 20 files</span>
-            )}
           </div>
         )}
 
-        <div className="relative flex items-end gap-2">
-          <div className="flex-1 relative">
+        <div className="relative flex items-end gap-3 glass bg-sigma-bg-secondary/30 rounded-2xl p-2 border-sigma-glass-border focus-within:border-sigma-accent/50 focus-within:ring-4 focus-within:ring-sigma-accent/5 transition-all duration-300">
+          <div className="flex-1 relative flex items-end">
             {showCommands && (
               <SlashCommandMenu
                 text={commandText}
@@ -138,6 +142,15 @@ export function ChatInput() {
                 onClose={() => setShowCommands(false)}
               />
             )}
+            
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isStreaming || attachments.length >= 20}
+              className="p-3 rounded-xl text-sigma-text-secondary hover:text-sigma-accent hover:bg-sigma-accent/10 transition-all disabled:opacity-30 shrink-0"
+            >
+              <Paperclip className="w-5 h-5" />
+            </button>
+            
             <textarea
               ref={textareaRef}
               value={input}
@@ -145,16 +158,10 @@ export function ChatInput() {
               onKeyDown={handleKeyDown}
               placeholder="Ask Sigma anything... (type / for commands)"
               rows={1}
-              className="w-full bg-sigma-bg-secondary border border-sigma-glass-border rounded-xl pl-10 pr-4 py-3 text-sm text-sigma-text-primary placeholder:text-sigma-text-secondary focus:outline-none focus:border-sigma-accent transition-colors resize-none max-h-[200px]"
+              className="w-full bg-transparent border-none py-3 px-1 text-sm text-sigma-text-primary placeholder:text-sigma-text-secondary/60 focus:outline-none resize-none max-h-[200px] custom-scrollbar min-h-[44px]"
               disabled={isStreaming}
             />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isStreaming || attachments.length >= 20}
-              className="absolute left-3 bottom-2.5 p-1 rounded-md text-sigma-text-secondary hover:text-sigma-accent hover:bg-sigma-glass-border transition-all disabled:opacity-30"
-            >
-              <Paperclip className="w-4 h-4" />
-            </button>
+            
             <input
               ref={fileInputRef}
               type="file"
@@ -165,22 +172,40 @@ export function ChatInput() {
             />
           </div>
 
-          {isStreaming ? (
-            <button
-              onClick={stopStreaming}
-              className="shrink-0 p-3 rounded-xl bg-sigma-danger/20 text-sigma-danger hover:bg-sigma-danger/30 transition-all duration-200"
-            >
-              <Square className="w-4 h-4" />
-            </button>
-          ) : (
-            <button
-              onClick={handleSend}
-              disabled={!input.trim() && !attachments.length}
-              className="shrink-0 p-3 rounded-xl bg-sigma-accent text-white hover:bg-sigma-accent-glow transition-all duration-200 glow-hover disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          )}
+          <div className="flex items-center gap-2 pr-1 pb-1">
+            {isStreaming ? (
+              <button
+                onClick={stopStreaming}
+                className="shrink-0 p-3 rounded-xl bg-sigma-danger/20 text-sigma-danger hover:bg-sigma-danger/30 transition-all duration-200 flex items-center gap-2"
+              >
+                <Square className="w-4 h-4 fill-current" />
+              </button>
+            ) : (
+              <button
+                onClick={handleSend}
+                disabled={!input.trim() && !attachments.length}
+                className="shrink-0 p-3 rounded-xl bg-sigma-accent text-white hover:bg-sigma-accent-glow transition-all duration-300 glow-hover disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-sigma-accent/20 group"
+              >
+                <Send className="w-5 h-5 group-hover:translate-x-0.5 group-hover:translate-y-[-2px] transition-transform" />
+              </button>
+            )}
+          </div>
+        </div>
+        
+        <div className="mt-3 flex items-center justify-between px-2">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-sigma-success animate-pulse" />
+              <span className="text-[10px] font-bold text-sigma-text-secondary uppercase tracking-widest">Neural Link Active</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Cpu className="w-3 h-3 text-sigma-accent" />
+              <span className="text-[10px] font-bold text-sigma-text-secondary uppercase tracking-widest">{currentModel.label}</span>
+            </div>
+          </div>
+          <p className="text-[10px] text-sigma-text-secondary font-medium">
+            Press <kbd className="bg-sigma-glass-border px-1 rounded text-sigma-text-primary">Enter</kbd> to send
+          </p>
         </div>
       </div>
     </div>

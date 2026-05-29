@@ -2,15 +2,24 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Message } from '../../types';
 import { CodeBlock } from './CodeBlock';
-import { Shield, User } from 'lucide-react';
+import { Shield, User, File, Download } from 'lucide-react';
 
 interface MessageBubbleProps {
   message: Message;
   isStreaming?: boolean;
 }
 
+function formatSize(bytes: number) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
 export function MessageBubble({ message, isStreaming }: MessageBubbleProps) {
   const isUser = message.role === 'user';
+  const attachments = message.attachments;
+  const images = attachments?.filter((a) => a.type.startsWith('image/')) || [];
+  const otherFiles = attachments?.filter((a) => !a.type.startsWith('image/')) || [];
 
   return (
     <div className={`flex items-start gap-3 animate-slide-up ${isUser ? 'flex-row-reverse' : ''}`}>
@@ -30,6 +39,33 @@ export function MessageBubble({ message, isStreaming }: MessageBubbleProps) {
             ? 'bg-sigma-accent text-white rounded-tr-md'
             : 'glass rounded-tl-md'
         }`}>
+          {images.length > 0 && (
+            <div className={`grid gap-2 mb-2 ${images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+              {images.map((img) => (
+                <div key={img.id} className="rounded-lg overflow-hidden bg-black/20">
+                  <img src={img.dataUrl} alt={img.name} className="w-full h-auto max-h-64 object-contain" />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {otherFiles.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-2">
+              {otherFiles.map((f) => (
+                <div key={f.id} className="flex items-center gap-2 glass rounded-lg px-3 py-2 text-xs">
+                  <File className="w-3.5 h-3.5 text-sigma-accent" />
+                  <span className="text-sigma-text-primary truncate max-w-[120px]">{f.name}</span>
+                  <span className="text-sigma-text-secondary">{formatSize(f.size)}</span>
+                  {f.dataUrl && (
+                    <a href={f.dataUrl} download={f.name} className="p-0.5 rounded hover:bg-sigma-glass-border">
+                      <Download className="w-3 h-3 text-sigma-accent" />
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
           {isUser ? (
             <p className="text-sm whitespace-pre-wrap">{message.content}</p>
           ) : (
@@ -68,6 +104,9 @@ export function MessageBubble({ message, isStreaming }: MessageBubbleProps) {
             <span className="text-[10px] text-sigma-text-secondary">
               {message.model.split('/').pop()}
             </span>
+          )}
+          {attachments && attachments.length > 0 && (
+            <span className="text-[10px] text-sigma-text-secondary">{attachments.length} file{attachments.length > 1 ? 's' : ''}</span>
           )}
         </div>
       </div>

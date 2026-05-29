@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Message, Conversation } from '../types';
+import { Message, Conversation, Attachment } from '../types';
 import { streamChat, getConversations as fetchConversations, deleteConversation as apiDeleteConversation } from '../lib/api';
 
 interface ChatState {
@@ -14,12 +14,23 @@ interface ChatState {
   setSelectedModel: (model: string) => void;
   loadConversations: () => Promise<void>;
   loadConversation: (id: string) => Promise<void>;
-  sendMessage: (content: string, mode?: string) => Promise<void>;
+  sendMessage: (content: string, mode?: string, attachments?: Attachment[]) => Promise<void>;
   createNewConversation: () => void;
   deleteConversation: (id: string) => Promise<void>;
   setActiveConversation: (id: string) => void;
   stopStreaming: () => void;
   clearError: () => void;
+}
+
+function buildContentParts(content: string, attachments?: Attachment[]) {
+  if (!attachments?.length) return content;
+  const parts: any[] = [{ type: 'text', text: content }];
+  for (const att of attachments) {
+    if (att.type.startsWith('image/') && att.dataUrl) {
+      parts.push({ type: 'image_url', image_url: { url: att.dataUrl } });
+    }
+  }
+  return parts;
 }
 
 let streamController: AbortController | null = null;
@@ -59,7 +70,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  sendMessage: async (content: string, mode?: string) => {
+  sendMessage: async (content: string, mode?: string, attachments?: Attachment[]) => {
     const { selectedModel, activeConversationId, messages } = get();
 
     const userMessage: Message = {
@@ -69,14 +80,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
       content,
       model: selectedModel,
       created_at: new Date().toISOString(),
+      attachments,
     };
 
     const updatedMessages = [...messages, userMessage];
     set({ messages: updatedMessages, isStreaming: true, streamedContent: '', error: null });
 
     try {
+      const apiMessages = updatedMessages.map((m) => {
+        const atts = m === userMessage ? attachments : undefined;
+        return { role: m.role, content: buildContentParts(m.content, atts) };
+      });
+
       streamController = await streamChat(
-        updatedMessages.map((m) => ({ role: m.role, content: m.content })),
+        apiMessages,
         selectedModel,
         (chunk) => {
           set((state) => ({ streamedContent: state.streamedContent + chunk }));

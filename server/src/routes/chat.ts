@@ -5,12 +5,21 @@ import { streamChat, validateModel } from '../services/nim.js';
 import { getConversation, createConversation, saveMessage } from '../services/supabase.js';
 import { SIGMA_SYSTEM_PROMPT, getModePrompt } from '../config/systemPrompt.js';
 
+function extractText(content: any): string {
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    const textPart = content.find((p: any) => p.type === 'text');
+    return textPart?.text || '';
+  }
+  return String(content);
+}
+
 const router = Router();
 
 router.post('/', authenticate, chatRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const { messages, model, conversationId, mode } = req.body as {
-      messages: { role: string; content: string }[];
+      messages: { role: string; content: any }[];
       model?: string;
       conversationId?: string;
       mode?: string;
@@ -46,10 +55,11 @@ router.post('/', authenticate, chatRateLimit, async (req: AuthRequest, res: Resp
       }
     }
 
+    const lastMessage = messages[messages.length - 1];
     await saveMessage({
       conversation_id: convId,
       role: 'user',
-      content: messages[messages.length - 1].content,
+      content: extractText(lastMessage.content),
       model: validatedModel,
     });
 

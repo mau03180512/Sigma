@@ -24,7 +24,7 @@ async function authFetch(url: string, options: RequestInit = {}): Promise<Respon
 }
 
 export async function streamChat(
-  messages: { role: string; content: string }[],
+  messages: { role: string; content: any }[],
   model: string,
   onChunk: (data: string) => void,
   onDone: (conversationId: string) => void,

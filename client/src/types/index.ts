@@ -1,3 +1,11 @@
+export interface Attachment {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  dataUrl?: string;
+}
+
 export interface Message {
   id: string;
   conversation_id: string;
@@ -5,6 +13,7 @@ export interface Message {
   content: string;
   model?: string;
   created_at: string;
+  attachments?: Attachment[];
 }
 
 export interface Conversation {
@@ -39,6 +48,7 @@ export const SLASH_COMMANDS: { command: SlashCommand; label: string; description
 
 export const MODELS = [
   { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B', tag: 'Versatile', bestFor: 'Best for general tasks' },
+  { id: 'llama-3.2-90b-vision-preview', label: 'Llama 3.2 90B Vision', tag: 'Vision', bestFor: 'Best for images & files' },
   { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B', tag: 'Fast', bestFor: 'Best for speed' },
   { id: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B', tag: 'MoE', bestFor: 'Best for complex reasoning' },
   { id: 'gemma2-9b-it', label: 'Gemma 2 9B', tag: 'Lightweight', bestFor: 'Best for balanced chat' },

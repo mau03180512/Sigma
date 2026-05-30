@@ -160,9 +160,9 @@ export async function loginWithBrowser(): Promise<Credentials> {
       res.end();
     });
 
-    server.listen(0, '127.0.0.1', () => {
+    server.listen(0, 'localhost', () => {
       const port = (server.address() as any).port;
-      const redirectUri = `http://127.0.0.1:${port}/callback`;
+      const redirectUri = `http://localhost:${port}/callback`;
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` + new URLSearchParams({
         client_id: GOOGLE_CLIENT_ID,
         redirect_uri: redirectUri,

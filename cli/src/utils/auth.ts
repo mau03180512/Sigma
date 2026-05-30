@@ -7,7 +7,8 @@ import { loadCredentials, saveCredentials, removeCredentials } from './config.js
 import { printInfoMessage } from './render.js';
 
 const FIREBASE_API_KEY = 'AIzaSyCwy3IUyA2BS4oU4egmcgYWMkvpz-pVf1Y';
-const GOOGLE_CLIENT_ID = '555749135212-30mf7edm932kfhvektitfo4ana59nfks.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = process.env.SIGMA_GOOGLE_CLIENT_ID || '';
+const GOOGLE_CLIENT_SECRET = process.env.SIGMA_GOOGLE_CLIENT_SECRET || '';
 const FIREBASE_REFRESH_URL = `https://securetoken.googleapis.com/v1/token?key=${FIREBASE_API_KEY}`;
 
 interface FirebaseRefreshResponse {
@@ -59,6 +60,13 @@ function getSuccessHtml(email: string): string {
 }
 
 export async function loginWithBrowser(): Promise<Credentials> {
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+    throw new Error(
+      'Google OAuth credentials not configured.\n' +
+      'Set SIGMA_GOOGLE_CLIENT_ID and SIGMA_GOOGLE_CLIENT_SECRET env vars,\n' +
+      'or set SIGMA_GROQ_KEY to use direct Groq access without login.'
+    );
+  }
   const codeVerifier = base64url(randomBytes(32));
   const codeChallenge = base64url(sha256(Buffer.from(codeVerifier)));
   const state = randomBytes(16).toString('hex');
@@ -94,7 +102,7 @@ export async function loginWithBrowser(): Promise<Credentials> {
               body: new URLSearchParams({
                 code,
                 client_id: GOOGLE_CLIENT_ID,
-                code_verifier: codeVerifier,
+                client_secret: GOOGLE_CLIENT_SECRET,
                 redirect_uri: `http://localhost:${port}/callback`,
                 grant_type: 'authorization_code',
               }),

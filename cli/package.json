@@ -1,6 +1,6 @@
 {
   "name": "sigma-ai-cli",
-  "version": "1.4.0",
+  "version": "1.4.2",
   "description": "Sigma AI — CLI for the Sigma AI assistant",
   "type": "module",
   "bin": {

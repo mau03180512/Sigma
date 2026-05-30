@@ -1,12 +1,13 @@
 import { createServer } from 'node:http';
 import { execSync } from 'node:child_process';
-import { homedir, platform } from 'node:os';
-import { randomBytes } from 'node:crypto';
+import { platform } from 'node:os';
+import { randomBytes, createHash } from 'node:crypto';
 import { Credentials } from '../types.js';
 import { loadCredentials, saveCredentials, removeCredentials } from './config.js';
-import { printInfoMessage, printErrorMessage } from './render.js';
+import { printInfoMessage } from './render.js';
 
 const FIREBASE_API_KEY = 'AIzaSyCwy3IUyA2BS4oU4egmcgYWMkvpz-pVf1Y';
+const GOOGLE_CLIENT_ID = '555749135212-30mf7edm932kfhvektitfo4ana59nfks.apps.googleusercontent.com';
 const FIREBASE_REFRESH_URL = `https://securetoken.googleapis.com/v1/token?key=${FIREBASE_API_KEY}`;
 
 interface FirebaseRefreshResponse {
@@ -19,172 +20,166 @@ interface FirebaseRefreshResponse {
   project_id: string;
 }
 
-function getLoginHtml(state: string): string {
+function base64url(buf: Buffer): string {
+  return buf.toString('base64url');
+}
+
+function base64urlFromString(s: string): string {
+  return base64url(Buffer.from(s));
+}
+
+function sha256(buf: Buffer): Buffer {
+  return createHash('sha256').update(buf).digest();
+}
+
+function getSuccessHtml(email: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sigma AI — Login</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #0f172a; color: #e2e8f0; display: flex; align-items: center;
-      justify-content: center; min-height: 100vh;
-    }
-    .card {
-      background: #1e293b; border-radius: 16px; padding: 40px; width: 380px;
-      text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5);
-    }
-    .logo { font-size: 32px; margin-bottom: 4px; }
-    h1 { font-size: 24px; margin-bottom: 4px; }
-    .sub { color: #94a3b8; margin-bottom: 24px; font-size: 14px; }
-    .field { margin-bottom: 16px; text-align: left; }
-    label { display: block; font-size: 13px; color: #94a3b8; margin-bottom: 4px; }
-    input {
-      width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #334155;
-      background: #0f172a; color: #e2e8f0; font-size: 14px; outline: none;
-    }
-    input:focus { border-color: #3b82f6; }
-    .btn {
-      width: 100%; padding: 10px; border-radius: 8px; border: none;
-      background: #3b82f6; color: #fff; font-size: 15px; font-weight: 600;
-      cursor: pointer; margin-top: 8px;
-    }
-    .btn:hover { background: #2563eb; }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    #status { margin-top: 16px; font-size: 13px; }
-    .success { color: #22c55e; }
-    .error { color: #ef4444; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="logo">Σ</div>
-    <h1>Sigma AI</h1>
-    <p class="sub">Sign in to use the Sigma AI CLI</p>
-    <form id="loginForm">
-      <div class="field">
-        <label for="email">Email</label>
-        <input type="email" id="email" placeholder="you@example.com" required autofocus>
-      </div>
-      <div class="field">
-        <label for="password">Password</label>
-        <input type="password" id="password" placeholder="Enter your password" required>
-      </div>
-      <button class="btn" id="loginBtn" type="submit">Sign In</button>
-    </form>
-    <div id="status"></div>
-  </div>
-  <script>
-    document.getElementById('loginForm').onsubmit = async (e) => {
-      e.preventDefault();
-      const btn = document.getElementById('loginBtn');
-      const status = document.getElementById('status');
-      btn.disabled = true;
-      status.className = '';
-      status.textContent = 'Signing in...';
-      try {
-        const res = await fetch('/callback', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: document.getElementById('email').value,
-            password: document.getElementById('password').value,
-            state: '${state}',
-          }),
-        });
-        if (res.ok) {
-          status.className = 'success';
-          status.textContent = 'Signed in successfully! You can close this window.';
-          setTimeout(() => window.close(), 1500);
-        } else {
-          const err = await res.text();
-          status.className = 'error';
-          status.textContent = err;
-          btn.disabled = false;
-        }
-      } catch (e) {
-        status.className = 'error';
-        status.textContent = e.message;
-        btn.disabled = false;
-      }
-    };
-  </script>
-</body>
-</html>`;
+<head><meta charset="UTF-8"><title>Sigma AI — Signed In</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f172a; color: #e2e8f0; display: flex; align-items: center;
+    justify-content: center; min-height: 100vh;
+  }
+  .card { background: #1e293b; border-radius: 16px; padding: 40px; width: 380px; text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
+  .check { font-size: 48px; margin-bottom: 8px; }
+  h1 { font-size: 24px; margin-bottom: 4px; }
+  p { color: #94a3b8; font-size: 14px; }
+</style></head>
+<body><div class="card">
+  <div class="check">✓</div>
+  <h1>Signed in</h1>
+  <p>${email}</p>
+  <p style="margin-top:16px;color:#64748b">You can close this window.</p>
+</div>
+<script>setTimeout(() => window.close(), 2000);</script>
+</body></html>`;
 }
 
 export async function loginWithBrowser(): Promise<Credentials> {
+  const codeVerifier = base64url(randomBytes(32));
+  const codeChallenge = base64url(sha256(Buffer.from(codeVerifier)));
   const state = randomBytes(16).toString('hex');
 
   const creds = await new Promise<Credentials>((resolve, reject) => {
     const server = createServer((req, res) => {
-      if (req.method === 'GET' && req.url === '/') {
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(getLoginHtml(state));
-        return;
-      }
+      const url = req.url || '';
 
-      if (req.method === 'POST' && req.url === '/callback') {
-        let body = '';
-        req.on('data', (chunk) => (body += chunk));
-        req.on('end', async () => {
+      if (req.method === 'GET' && url.startsWith('/callback')) {
+        const parsed = new URL(url, 'http://localhost');
+        const code = parsed.searchParams.get('code');
+        const returnedState = parsed.searchParams.get('state');
+        const error = parsed.searchParams.get('error');
+
+        if (error) {
+          res.writeHead(400, { 'Content-Type': 'text/html' });
+          res.end(`<h1>Error: ${error}</h1><p>${parsed.searchParams.get('error_description') || ''}</p>`);
+          return;
+        }
+
+        if (!code || returnedState !== state) {
+          res.writeHead(400, { 'Content-Type': 'text/html' });
+          res.end('<h1>Invalid request</h1>');
+          return;
+        }
+
+        (async () => {
           try {
-            const data = JSON.parse(body);
-            if (data.state !== state) {
-              res.writeHead(400);
-              res.end('Invalid state');
+            const port = (server.address() as any).port;
+            const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams({
+                code,
+                client_id: GOOGLE_CLIENT_ID,
+                code_verifier: codeVerifier,
+                redirect_uri: `http://localhost:${port}/callback`,
+                grant_type: 'authorization_code',
+              }),
+            });
+
+            if (!tokenRes.ok) {
+              const errText = await tokenRes.text();
+              res.writeHead(500, { 'Content-Type': 'text/html' });
+              res.end(`<h1>Token exchange failed</h1><p>${errText}</p>`);
               return;
             }
-            const firebaseRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`, {
+
+            const tokenData = await tokenRes.json();
+            const googleIdToken = tokenData.id_token;
+            const googleRefreshToken = tokenData.refresh_token || '';
+            const email = tokenData.email || (() => {
+              try {
+                const parts = googleIdToken.split('.');
+                return JSON.parse(Buffer.from(parts[1], 'base64url').toString()).email || '';
+              } catch { return ''; }
+            })();
+
+            const idpRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${FIREBASE_API_KEY}`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: data.email, password: data.password, returnSecureToken: true }),
+              body: JSON.stringify({
+                requestUri: `http://localhost:${port}/callback`,
+                postBody: `id_token=${googleIdToken}&providerId=google.com`,
+                returnSecureToken: true,
+              }),
             });
-            if (!firebaseRes.ok) {
-              const err = await firebaseRes.json();
-              const msg = err?.error?.message || 'Login failed';
-              res.writeHead(401);
-              res.end(msg);
+
+            if (!idpRes.ok) {
+              const errText = await idpRes.text();
+              res.writeHead(500, { 'Content-Type': 'text/html' });
+              res.end(`<h1>Firebase sign-in failed</h1><p>${errText}</p>`);
               return;
             }
-            const fbData = await firebaseRes.json();
+
+            const fbData = await idpRes.json();
+            const userEmail: string = email || fbData.email || '';
             const creds: Credentials = {
               idToken: fbData.idToken,
               refreshToken: fbData.refreshToken,
-              email: fbData.email,
+              email: userEmail,
               expiresAt: Date.now() + parseInt(fbData.expiresIn, 10) * 1000,
             };
+
             await saveCredentials(creds);
-            res.writeHead(200);
-            res.end('OK');
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(getSuccessHtml(userEmail));
             server.close();
             resolve(creds);
           } catch (e: any) {
-            res.writeHead(400);
-            res.end(e.message);
+            res.writeHead(500, { 'Content-Type': 'text/html' });
+            res.end(`<h1>Error</h1><p>${e.message}</p>`);
           }
-        });
+        })();
         return;
       }
 
-      res.writeHead(404);
+      res.writeHead(302, { Location: `/callback?error=not_found` });
       res.end();
     });
 
-    server.listen(0, 'localhost', () => {
-      const addr = server.address();
-      const port = typeof addr === 'string' ? parseInt(addr) : addr?.port || 0;
-      printInfoMessage(`Opening browser for login...`);
-      const url = `http://localhost:${port}`;
+    server.listen(0, '127.0.0.1', () => {
+      const port = (server.address() as any).port;
+      const redirectUri = `http://127.0.0.1:${port}/callback`;
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` + new URLSearchParams({
+        client_id: GOOGLE_CLIENT_ID,
+        redirect_uri: redirectUri,
+        response_type: 'code',
+        scope: 'openid email profile',
+        access_type: 'offline',
+        state,
+        code_challenge_method: 'S256',
+        code_challenge: codeChallenge,
+      });
 
-      const cmd = platform() === 'win32' ? `start "" "${url}"`
-        : platform() === 'darwin' ? `open "${url}"`
-        : `xdg-open "${url}"`;
+      printInfoMessage(`Opening browser for Google sign-in...`);
+      const cmd = platform() === 'win32' ? `start "" "${authUrl}"`
+        : platform() === 'darwin' ? `open "${authUrl}"`
+        : `xdg-open "${authUrl}"`;
       try { execSync(cmd); } catch {
-        printInfoMessage(`Open this URL in your browser: ${url}`);
+        printInfoMessage(`Open this URL in your browser:\n${authUrl}`);
       }
     });
 

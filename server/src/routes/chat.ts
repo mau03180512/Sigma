@@ -1,7 +1,8 @@
 import { Router, Response } from 'express';
 import { AuthRequest, authenticate } from '../middleware/auth.js';
 import { chatRateLimit } from '../middleware/rateLimit.js';
-import { streamChat, validateModel } from '../services/nim.js';
+import { streamChat as groqStream, validateModel as groqValidate } from '../services/groq.js';
+import { streamChat as nimStream, validateModel as nimValidate } from '../services/nim.js';
 import { getConversation, createConversation, saveMessage } from '../services/supabase.js';
 import { SIGMA_SYSTEM_PROMPT, getModePrompt } from '../config/systemPrompt.js';
 
@@ -18,11 +19,12 @@ const router = Router();
 
 router.post('/', authenticate, chatRateLimit, async (req: AuthRequest, res: Response) => {
   try {
-    const { messages, model, conversationId, mode } = req.body as {
+    const { messages, model, conversationId, mode, provider } = req.body as {
       messages: { role: string; content: any }[];
       model?: string;
       conversationId?: string;
       mode?: string;
+      provider?: 'groq' | 'nim';
     };
 
     if (!messages?.length) {
@@ -30,10 +32,14 @@ router.post('/', authenticate, chatRateLimit, async (req: AuthRequest, res: Resp
       return;
     }
 
-    const userId = req.userId!;
-    const validatedModel = validateModel(model || 'llama-3.3-70b-versatile');
+    const activeProvider = provider === 'nim' ? 'nim' : 'groq';
+    const validate = activeProvider === 'nim' ? nimValidate : groqValidate;
+    const stream = activeProvider === 'nim' ? nimStream : groqStream;
 
-    console.log(`[Chat] userId=${userId?.slice(0, 8)}... model=${validatedModel} convId=${conversationId || 'new'} mode=${mode || 'none'} messages=${messages.length}`);
+    const userId = req.userId!;
+    const validatedModel = validate(model || 'llama-3.3-70b-versatile');
+
+    console.log(`[Chat] userId=${userId?.slice(0, 8)}... model=${validatedModel} provider=${activeProvider} convId=${conversationId || 'new'} mode=${mode || 'none'} messages=${messages.length}`);
 
     let convId = conversationId;
     if (!convId) {
@@ -73,7 +79,7 @@ router.post('/', authenticate, chatRateLimit, async (req: AuthRequest, res: Resp
     let fullResponse = '';
 
     try {
-      for await (const chunk of streamChat({
+      for await (const chunk of stream({
         messages: chatMessages as any,
         model: validatedModel,
       })) {

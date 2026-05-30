@@ -1,0 +1,31 @@
+{
+  "name": "sigma-ai-cli",
+  "version": "1.0.0",
+  "description": "Sigma AI — CLI for the Sigma AI assistant",
+  "type": "module",
+  "bin": {
+    "sigma-ai": "./bin/sigma-ai.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "inquirer": "^10.2.0",
+    "marked": "^14.0.0",
+    "ora": "^8.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.4",
+    "tsx": "^4.19.1",
+    "typescript": "^5.5.4"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": ["sigma", "ai", "cli", "groq"],
+  "license": "MIT"
+}

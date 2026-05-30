@@ -80,7 +80,6 @@ export async function chatCommand(options?: {
     try {
       for await (const chunk of streamChat(messages, {
         model,
-        conversationId: currentConvId,
         mode,
         provider: options?.provider,
       })) {

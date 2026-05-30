@@ -1,9 +1,7 @@
-import { Router, Response } from 'express';
-import { AuthRequest, authenticate } from '../middleware/auth.js';
+import { Router, Request, Response } from 'express';
 import { chatRateLimit } from '../middleware/rateLimit.js';
 import { streamChat as groqStream, validateModel as groqValidate } from '../services/groq.js';
 import { streamChat as nimStream, validateModel as nimValidate } from '../services/nim.js';
-import { getConversation, createConversation, saveMessage } from '../services/supabase.js';
 import { SIGMA_SYSTEM_PROMPT, getModePrompt } from '../config/systemPrompt.js';
 
 function extractText(content: any): string {
@@ -17,12 +15,11 @@ function extractText(content: any): string {
 
 const router = Router();
 
-router.post('/', authenticate, chatRateLimit, async (req: AuthRequest, res: Response) => {
+router.post('/', chatRateLimit, async (req: Request, res: Response) => {
   try {
-    const { messages, model, conversationId, mode, provider } = req.body as {
+    const { messages, model, mode, provider } = req.body as {
       messages: { role: string; content: any }[];
       model?: string;
-      conversationId?: string;
       mode?: string;
       provider?: 'groq' | 'nim';
     };
@@ -36,25 +33,12 @@ router.post('/', authenticate, chatRateLimit, async (req: AuthRequest, res: Resp
     const validate = activeProvider === 'nim' ? nimValidate : groqValidate;
     const stream = activeProvider === 'nim' ? nimStream : groqStream;
 
-    const userId = req.userId!;
     const validatedModel = validate(model || 'llama-3.3-70b-versatile');
 
-    console.log(`[Chat] userId=${userId?.slice(0, 8)}... model=${validatedModel} provider=${activeProvider} convId=${conversationId || 'new'} mode=${mode || 'none'} messages=${messages.length}`);
-
-    let convId = conversationId;
-    if (!convId) {
-      const title = extractText(messages[messages.length - 1]?.content).slice(0, 60) || 'New Chat';
-      const conv = await createConversation({
-        user_id: userId,
-        model: validatedModel,
-        title,
-      });
-      convId = conv.id;
-      console.log(`[Chat] Created conversation: ${convId} title="${title}"`);
-    }
+    console.log(`[Chat] model=${validatedModel} provider=${activeProvider} messages=${messages.length}`);
 
     const systemMessage = { role: 'system', content: SIGMA_SYSTEM_PROMPT };
-    const chatMessages = [systemMessage, ...messages];
+    const chatMessages = [...messages];
 
     if (mode) {
       const modePrompt = getModePrompt(mode);
@@ -63,18 +47,11 @@ router.post('/', authenticate, chatRateLimit, async (req: AuthRequest, res: Resp
       }
     }
 
-    const lastMessage = messages[messages.length - 1];
-    await saveMessage({
-      conversation_id: convId,
-      role: 'user',
-      content: extractText(lastMessage.content),
-      model: validatedModel,
-    });
+    chatMessages.unshift(systemMessage);
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Conversation-Id', convId);
 
     let fullResponse = '';
 
@@ -84,24 +61,17 @@ router.post('/', authenticate, chatRateLimit, async (req: AuthRequest, res: Resp
         model: validatedModel,
       })) {
         fullResponse += chunk;
-        res.write(`data: ${JSON.stringify({ content: chunk, conversationId: convId })}\n\n`);
+        res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
       }
     } catch (streamError: any) {
-      console.error(`[Chat] Stream error for conv=${convId}:`, streamError.message);
+      console.error(`[Chat] Stream error:`, streamError.message);
       res.write(`data: ${JSON.stringify({ error: streamError.message })}\n\n`);
       res.end();
       return;
     }
 
-    await saveMessage({
-      conversation_id: convId,
-      role: 'assistant',
-      content: fullResponse,
-      model: validatedModel,
-    });
-
-    console.log(`[Chat] Completed conv=${convId} chars=${fullResponse.length}`);
-    res.write(`data: ${JSON.stringify({ done: true, conversationId: convId })}\n\n`);
+    console.log(`[Chat] Completed chars=${fullResponse.length}`);
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
   } catch (error: any) {
     console.error(`[Chat] Fatal error:`, error);

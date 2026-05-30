@@ -1,10 +1,10 @@
 {
   "name": "sigma-ai-cli",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Sigma AI — CLI for the Sigma AI assistant",
   "type": "module",
   "bin": {
-    "sigma-ai": "./bin/sigma-ai.js"
+    "sigma-ai": "./bin/sigma-ai.cjs"
   },
   "scripts": {
     "build": "tsc",
@@ -26,6 +26,11 @@
   "engines": {
     "node": ">=18"
   },
-  "keywords": ["sigma", "ai", "cli", "groq"],
+  "keywords": [
+    "sigma",
+    "ai",
+    "cli",
+    "groq"
+  ],
   "license": "MIT"
 }
